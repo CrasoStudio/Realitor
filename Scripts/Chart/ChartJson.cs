@@ -9,14 +9,14 @@ using System.Collections.Generic;
 
 public class ChartJson
 {
-    public float BPM;
-    public float offset;
-    public int version = 1;
+    public float BPM;//完成
+    public float offset;//完成
+    public int version = 1;//完成
     
-    public List<GroundTrack> groundTracks = [];
-    public List<SkyTrack> skyTracks = [];
+    public List<GroundTrack> groundTracks = [];//完成
+    public List<SkyTrack> skyTracks = [];//完成
     
-    public List<BPMEvent> BPMEvents = [];
+    public List<BPMEvent> BPMEvents = [];//完成
     public List<SpeedGroup> speedGroups = [];
     
     public List<CameraMoveEvent> cameraMoveEvents = [];
@@ -29,8 +29,8 @@ public class Note
     public float time;
     public float duration;
     public int type;// tap=0,hold=1
-    public float speed = 1;
-    public int speedGroupID;
+    public float speed = 1;//x
+    public int speedGroupID;//x
 }
 
 public class SkyNote
@@ -42,10 +42,10 @@ public class SkyNote
 public class GroundTrack
 {
     public int track;// 在 0-3 范围外为装饰轨道
-    public List<Note> notes;
-    public List<TrackMoveEvent> trackMoveEvents = [];
-    public List<TrackRotateEvent> trackRotateEvents = [];
-    public List<TrackTransparencyEvent> trackTransparencyEvents = [];
+    public List<Note> notes = [];
+    public List<TrackMoveEvent> trackMoveEvents = [];//x
+    public List<TrackRotateEvent> trackRotateEvents = [];//x
+    public List<TrackTransparencyEvent> trackTransparencyEvents = [];//x
 }
 
 public class SkyTrack
@@ -58,8 +58,8 @@ public class SkyTrack
 public class TrackPoint
 {
     public float time;
-    public float x, y;
-    public int speed;
+    public float x, y;//y-x
+    public int speed = 1;//x
 }
 
 public class SpeedGroup
@@ -72,7 +72,7 @@ public class SpeedEvent
 {
     public float startTime;
     public float endTime;
-    public float speed;
+    public float speed = 1;
 }
 
 public class BPMEvent
