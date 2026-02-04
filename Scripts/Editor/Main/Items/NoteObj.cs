@@ -9,7 +9,8 @@ public partial class NoteObj : ColorRect
     public EditorController.Types thisNoteType = EditorController.Types.TapNote;
     
     public int track;
-    [Export] public float time, duration;
+    public float time, duration;
+    public float speed = 1;
 
     private bool isReady;
 
@@ -47,7 +48,7 @@ public partial class NoteObj : ColorRect
             EditorController.instance.editArea.placeable = false;
             
             var nearestBeatLine = EditorController.GetNearestObj(GetGlobalMousePosition(),
-                EditorController.instance.editArea._poolN);
+                EditorController.instance.editArea.poolN);
             
             if(nearestBeatLine.Position.Y > Position.Y) return;
 
@@ -65,24 +66,39 @@ public partial class NoteObj : ColorRect
 
     public override void _GuiInput(InputEvent @event)
     {
-        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Right })
+        if (@event is InputEventMouseButton mb)
         {
-            EditorController.instance.editArea.notes.Remove(this);
-            QueueFree();
+            if (Input.IsActionJustPressed("ui_mouse_middle_button_press"))
+            {
+                EditorController.instance.editArea.currentlySelectedNote = this;
+                EditorController.instance.objEditPanel.SelectNote();
+            }
+            else if (mb.ButtonIndex == MouseButton.Right)
+            {
+                if (EditorController.instance.editArea.currentlySelectedNote == this)
+                {
+                    EditorController.instance.editArea.currentlySelectedNote = null;
+                    EditorController.instance.objEditPanel.ResetPanel();
+                }
+                EditorController.instance.editArea.notes.Remove(this);
+                QueueFree();
+            }
         }
     }
 
     public void Update()
     {
-        // 1. 更新 Y 轴位置 (基于时间)
-        float timeInSeconds = EditorController.GetTimeFromBeat(time, EditorController.instance.bpmEvents);
-        float yPos = EditorController.instance.editArea.judgeLine.GlobalPosition.Y - 
-                    (EditorController.instance.offset / 1000 + timeInSeconds) * EditorController.instance.editArea.PixelsPerSecond *
-                    EditorController.instance.beatScale;
+        if (duration <= 0.008f) duration = 0;
+        
+        float yPos = EditorController.instance.editArea.startPos.Y -
+                     (EditorController.instance.offset / 1000 +
+                      EditorController.GetTimeFromBeat(time, EditorController.instance.bpmEvents)) *
+                     EditorController.instance.editArea.PixelsPerSecond *
+                     EditorController.instance.beatScale -
+                     Size.Y / 2;
 
-        // 2. 更新 X 轴位置 (基于轨道类型)
-        float xPos = GlobalPosition.X; // 默认保持当前 X
-
+        Position = Position with { Y = yPos };
+        
         if (thisNoteType == EditorController.Types.TapNote || thisNoteType == EditorController.Types.HoldNote)
         {
             // 地面音符：对齐到对应的 SnapLine
@@ -90,7 +106,7 @@ public partial class NoteObj : ColorRect
             if (track >= 0 && track < snapLines.Count)
             {
                 var targetSnap = (Control)snapLines[track];
-                xPos = targetSnap.GlobalPosition.X - Size.X / 2;
+                GlobalPosition = GlobalPosition with { X = targetSnap.GlobalPosition.X - Size.X / 2 };
             }
         }
         else
@@ -105,16 +121,14 @@ public partial class NoteObj : ColorRect
                 Vector2 localPos = xline.ToLocal(new Vector2(0, yPos));
                 // 调用你提到的根据 Y 获取位置的功能
                 Vector2 curveLocalPos = xline.GetPositionFromY(localPos.Y);
-                // 转回全局坐标并应用到 X
-                xPos = xline.ToGlobal(curveLocalPos).X - Size.X / 2;
+                
+                GlobalPosition = GlobalPosition with { X = xline.ToGlobal(curveLocalPos).X - Size.X / 2 };
             }
         }
-
-        // 应用更新后的位置
-        GlobalPosition = new Vector2(xPos, yPos - Size.Y / 2);
         
-        // 3. 重新计算时间与长度（防止因 BPM 变更导致的数值偏移）
-        time = EditorController.GetBeatFromTime(timeInSeconds, EditorController.instance.bpmEvents);
+        time = EditorController.GetBeatFromTime(
+            EditorController.GetTimeFromBeat(time, EditorController.instance.bpmEvents),
+            EditorController.instance.bpmEvents);
         
         if (thisNoteType == EditorController.Types.HoldNote)
         {
@@ -132,9 +146,9 @@ public partial class NoteObj : ColorRect
         if (line == null) return;
 
         float endSeconds = EditorController.GetTimeFromBeat(time + duration, EditorController.instance.bpmEvents);
-        float endY = EditorController.instance.editArea.judgeLine.GlobalPosition.Y - 
-                    (EditorController.instance.offset / 1000 + endSeconds) * EditorController.instance.editArea.PixelsPerSecond *
-                    EditorController.instance.beatScale;
+        float endY = EditorController.instance.editArea.startPos.Y - 
+                     (EditorController.instance.offset / 1000 + endSeconds) * EditorController.instance.editArea.PixelsPerSecond *
+                     EditorController.instance.beatScale;
 
         Vector2 startPoint = line.ToLocal(new Vector2(GlobalPosition.X + Size.X / 2, currentY));
         Vector2 endPoint = line.ToLocal(new Vector2(GlobalPosition.X + Size.X / 2, endY));

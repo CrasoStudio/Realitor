@@ -13,14 +13,15 @@ public partial class EditArea : ColorRect
 
     public bool scrollable = true, placeable = true;
     
-    public List<BeatLine> _poolN = [];
-    public List<BeatLine> _poolE = [];
+    public List<BeatLine> poolN = [];
+    public List<BeatLine> poolE = [];
 
     public List<NoteObj> notes = [];
     public List<SkyTrackObj> skyTrackObjs = [];
     public Dictionary<int, List<SkyTrackNodeObj>> skyTracks = [];
 
     public SkyTrackNodeObj currentlySelectedSkyTrackNode;
+    public NoteObj currentlySelectedNote;
 
     public List<int> groundTrackIDs = [];
 
@@ -35,7 +36,7 @@ public partial class EditArea : ColorRect
     {
         _notesContentOrigin = notesContent.Position;
         _eventContentOrigin = eventsContent.Position;
-
+        
         startPos = _notesContentOrigin + new Vector2(0, notesContent.Size.Y);
     }
 
@@ -85,11 +86,13 @@ public partial class EditArea : ColorRect
             if(!scrollable) return;
             
             if (mb.ButtonIndex == MouseButton.WheelUp)
-                ModifySongTime(ScrollSensitivity); 
+            {
+                ModifySongTime(ScrollSensitivity);
+            }
             else if (mb.ButtonIndex == MouseButton.WheelDown)
+            {
                 ModifySongTime(-ScrollSensitivity);
-            else if (mb.ButtonIndex == MouseButton.Right)
-                currentlySelectedSkyTrackNode = null;
+            }
         }
     }
 
@@ -108,8 +111,9 @@ public partial class EditArea : ColorRect
     public override void _Process(double delta)
     {
         if (!EditorController.instance.isLoaded) return;
-        
-        var currentScrollOffset = EditorController.instance.songTime * (PixelsPerSecond * EditorController.instance.beatScale);
+
+        var currentScrollOffset =
+            EditorController.instance.songTime * (PixelsPerSecond * EditorController.instance.beatScale);
         notesContent.Position = new Vector2(_notesContentOrigin.X, _notesContentOrigin.Y + currentScrollOffset);
         eventsContent.Position = new Vector2(_eventContentOrigin.X, _eventContentOrigin.Y + currentScrollOffset);
 
@@ -119,124 +123,139 @@ public partial class EditArea : ColorRect
         }
 
         UpdateVisibleLines();
-        
-        if(placeable) CheckEditInput();
+
+        if (notesViewport.GetRect().HasPoint(notesViewport.GetLocalMousePosition()) &&
+            Input.IsActionJustPressed("ui_mouse_press") && 
+            !Input.IsActionJustPressed("ui_mouse_middle_button_press"))
+        {
+            currentlySelectedSkyTrackNode = null;
+            currentlySelectedNote = null;
+            EditorController.instance.objEditPanel.ResetPanel();
+            if (placeable) PlaceObject();
+        }
+
+        if (Input.IsActionJustPressed("GamePause")) 
+        {
+            currentlySelectedSkyTrackNode = null;
+            currentlySelectedNote = null;
+            EditorController.instance.objEditPanel.ResetPanel();
+        }
     }
     
-    private void CheckEditInput()
+    private void PlaceObject()
     {
-        if (notesViewport.GetRect().HasPoint(notesViewport.GetLocalMousePosition()) 
-            && Input.IsActionJustPressed("ui_mouse_press"))
+        if (EditorController.instance.currentlySelectedType != EditorController.Types.SkyTrack)
         {
-            if (EditorController.instance.currentlySelectedType != EditorController.Types.SkyTrack)
+            var note = noteObj.Instantiate<NoteObj>();
+            note.Init(EditorController.instance.currentlySelectedType);
+            notes.Add(note);
+            notesContent.AddChild(note);
+
+            if (note.thisNoteType == EditorController.Types.TapNote |
+                note.thisNoteType == EditorController.Types.HoldNote)
             {
-                var note = noteObj.Instantiate<NoteObj>();
-                note.Init(EditorController.instance.currentlySelectedType);
-                notes.Add(note);
-                notesContent.AddChild(note);
+                var nearestSnapLine =
+                    EditorController.GetNearestObj(GetGlobalMousePosition(),
+                        groundNotesSnapLineParent.GetChildren());
+                var nearestBeatLine = EditorController.GetNearestObj(GetGlobalMousePosition(), poolN);
 
-                if (note.thisNoteType == EditorController.Types.TapNote |
-                    note.thisNoteType == EditorController.Types.HoldNote)
-                {
-                    var nearestSnapLine =
-                        EditorController.GetNearestObj(GetGlobalMousePosition(),
-                            groundNotesSnapLineParent.GetChildren());
-                    var nearestBeatLine = EditorController.GetNearestObj(GetGlobalMousePosition(), _poolN);
-
-                    note.GlobalPosition = new Vector2(nearestSnapLine.GlobalPosition.X - note.Size.X / 2,
-                        nearestBeatLine.GlobalPosition.Y - note.Size.Y / 2);
-                    note.track = ((SnapLine)nearestSnapLine).index;
-                    note.time = EditorController.GetBeatFromTime(((BeatLine)nearestBeatLine).timeSec,
-                        EditorController.instance.bpmEvents);
+                note.GlobalPosition = new Vector2(nearestSnapLine.GlobalPosition.X - note.Size.X / 2,
+                    nearestBeatLine.GlobalPosition.Y - note.Size.Y / 2);
+                note.track = ((SnapLine)nearestSnapLine).index;
+                note.time = EditorController.GetBeatFromTime(((BeatLine)nearestBeatLine).timeSec,
+                    EditorController.instance.bpmEvents);
                     
-                    if(!groundTrackIDs.Contains(note.track)) groundTrackIDs.Add(note.track);
-                    if(groundTrackIDs.Count > 1) groundTrackIDs.Sort((t, t1) => t.CompareTo(t1));
-                }
-                else
-                {
-                    if(skyTrackObjs.Count == 0) return;
-                    List<SkyTrackNodeObj> nodes = [];
-                    foreach (var child in skyTrackObjs.SelectMany(track => track.GetChildren()))
-                        if (child is SkyTrackNodeObj node) nodes.Add(node);
-
-                    var nearestSkyTrackNode = EditorController.GetNearestObj(GetGlobalMousePosition(),
-                        nodes);
-                    var nearestBeatLine = EditorController.GetNearestObj(GetGlobalMousePosition(), _poolN);
-                    var stLine = skyTrackObjs[((SkyTrackNodeObj)nearestSkyTrackNode).track].line;
-
-                    note.GlobalPosition = new Vector2(
-                        stLine.ToGlobal(stLine.GetPositionFromY(stLine
-                            .ToLocal(new Vector2(0, nearestBeatLine.GlobalPosition.Y - note.Size.Y / 2)).Y)).X -
-                        note.Size.X / 2,
-                        nearestBeatLine.GlobalPosition.Y - note.Size.Y / 2);
-                    note.track = ((SkyTrackNodeObj)nearestSkyTrackNode).track;
-                    note.time = EditorController.GetBeatFromTime(((BeatLine)nearestBeatLine).timeSec,
-                        EditorController.instance.bpmEvents);
-                }
+                if(!groundTrackIDs.Contains(note.track)) groundTrackIDs.Add(note.track);
+                if(groundTrackIDs.Count > 1) groundTrackIDs.Sort((t, t1) => t.CompareTo(t1));
             }
             else
             {
-                var node = skyTrackNodeObj.Instantiate<SkyTrackNodeObj>();
+                if(skyTrackObjs.Count == 0) return;
+                List<SkyTrackNodeObj> nodes = [];
+                foreach (var child in skyTrackObjs.SelectMany(track => track.GetChildren()))
+                    if (child is SkyTrackNodeObj node) nodes.Add(node);
 
-                int id;
+                var nearestSkyTrackNode = EditorController.GetNearestObj(GetGlobalMousePosition(),
+                    nodes);
+                var nearestBeatLine = EditorController.GetNearestObj(GetGlobalMousePosition(), poolN);
+                var stLine = skyTrackObjs[((SkyTrackNodeObj)nearestSkyTrackNode).track].line;
 
-                if (currentlySelectedSkyTrackNode != null)
-                {
-                    id = currentlySelectedSkyTrackNode.track;
-                    skyTrackObjs[id].AddChild(node);
-                    skyTracks[id].Add(node);
-                }
-                else
-                {
-                    id = maxSkyTrackID + 1;
-                    skyTracks.Add(id, []);
-                    maxSkyTrackID = id;
-                    skyTracks[id].Add(node);
-
-                    var trackObj = new SkyTrackObj
-                    {
-                        track = id,
-                    };
-                    notesContent.AddChild(trackObj);
-                    skyTrackObjs.Add(trackObj);
-                    trackObj.AddChild(node);
-                }
-                
-                if (skyTracks[id].Count > 1) skyTracks[id].Sort((a, b) =>
-                    b.GlobalPosition.Y.CompareTo(a.GlobalPosition.Y));
-                
-                if (EditorController.instance.noteEditSeg != 0)
-                {
-                    var nearestSnapLine = EditorController.GetNearestObj(GetGlobalMousePosition(),
-                        skyNotesSnapLineParent.GetChildren());
-                    var nearestBeatLine = EditorController.GetNearestObj(GetGlobalMousePosition(), _poolN);
-
-                    node.GlobalPosition = new Vector2(nearestSnapLine.GlobalPosition.X - node.Size.X / 2,
-                        nearestBeatLine.GlobalPosition.Y - node.Size.Y / 2);
-                    node.track = id;
-                    node.x = -1 + 2f / (EditorController.instance.noteEditSeg + 1) *
-                        (((SnapLine)nearestSnapLine).index + 1);
-                    node.time = EditorController.GetBeatFromTime(((BeatLine)nearestBeatLine).timeSec,
-                        EditorController.instance.bpmEvents);
-                }
-                else
-                {
-                    var nearestBeatLine = EditorController.GetNearestObj(GetGlobalMousePosition(), _poolN);
-
-                    node.GlobalPosition = new Vector2(GetGlobalMousePosition().X - node.Size.X / 2,
-                        nearestBeatLine.GlobalPosition.Y - node.Size.Y / 2);
-                    node.track = id;
-                    node.x = -1 + (node.GlobalPosition.X + node.Size.X / 2) * 2 / 862;
-                    node.time = EditorController.GetBeatFromTime(((BeatLine)nearestBeatLine).timeSec,
-                        EditorController.instance.bpmEvents);
-                }
-
-                currentlySelectedSkyTrackNode = node;
+                note.GlobalPosition = new Vector2(
+                    stLine.ToGlobal(stLine.GetPositionFromY(stLine
+                        .ToLocal(new Vector2(0, nearestBeatLine.GlobalPosition.Y - note.Size.Y / 2)).Y)).X -
+                    note.Size.X / 2,
+                    nearestBeatLine.GlobalPosition.Y - note.Size.Y / 2);
+                note.track = ((SkyTrackNodeObj)nearestSkyTrackNode).track;
+                note.time = EditorController.GetBeatFromTime(((BeatLine)nearestBeatLine).timeSec,
+                    EditorController.instance.bpmEvents);
             }
-            notes.Sort((obj, obj1) => obj.time.CompareTo(obj1.time));
-            skyTrackObjs.Sort((obj, obj1) => obj.track.CompareTo(obj1.track));
-            skyTracks = new Dictionary<int, List<SkyTrackNodeObj>>(skyTracks.OrderBy(pair => pair.Key));
+
+            currentlySelectedNote = note;
+            EditorController.instance.objEditPanel.SelectNote();
         }
+        else
+        {
+            var node = skyTrackNodeObj.Instantiate<SkyTrackNodeObj>();
+
+            int id;
+
+            if (currentlySelectedSkyTrackNode != null)
+            {
+                id = currentlySelectedSkyTrackNode.track;
+                skyTrackObjs[id].AddChild(node);
+                skyTracks[id].Add(node);
+            }
+            else
+            {
+                id = maxSkyTrackID + 1;
+                skyTracks.Add(id, []);
+                maxSkyTrackID = id;
+                skyTracks[id].Add(node);
+
+                var trackObj = new SkyTrackObj
+                {
+                    track = id,
+                };
+                notesContent.AddChild(trackObj);
+                skyTrackObjs.Add(trackObj);
+                trackObj.AddChild(node);
+            }
+                
+            if (skyTracks[id].Count > 1) skyTracks[id].Sort((a, b) =>
+                b.GlobalPosition.Y.CompareTo(a.GlobalPosition.Y));
+                
+            if (EditorController.instance.noteEditSeg != 0)
+            {
+                var nearestSnapLine = EditorController.GetNearestObj(GetGlobalMousePosition(),
+                    skyNotesSnapLineParent.GetChildren());
+                var nearestBeatLine = EditorController.GetNearestObj(GetGlobalMousePosition(), poolN);
+
+                node.GlobalPosition = new Vector2(nearestSnapLine.GlobalPosition.X - node.Size.X / 2,
+                    nearestBeatLine.GlobalPosition.Y - node.Size.Y / 2);
+                node.track = id;
+                node.x = -1 + 2f / (EditorController.instance.noteEditSeg + 1) *
+                    (((SnapLine)nearestSnapLine).index + 1);
+                node.time = EditorController.GetBeatFromTime(((BeatLine)nearestBeatLine).timeSec,
+                    EditorController.instance.bpmEvents);
+            }
+            else
+            {
+                var nearestBeatLine = EditorController.GetNearestObj(GetGlobalMousePosition(), poolN);
+
+                node.GlobalPosition = new Vector2(GetGlobalMousePosition().X - node.Size.X / 2,
+                    nearestBeatLine.GlobalPosition.Y - node.Size.Y / 2);
+                node.track = id;
+                node.x = -1 + (node.GlobalPosition.X + node.Size.X / 2) * 2 / 862;
+                node.time = EditorController.GetBeatFromTime(((BeatLine)nearestBeatLine).timeSec,
+                    EditorController.instance.bpmEvents);
+            }
+
+            currentlySelectedSkyTrackNode = node;
+            EditorController.instance.objEditPanel.SelectSkyTrackNode();
+        }
+        notes.Sort((obj, obj1) => obj.time.CompareTo(obj1.time));
+        skyTrackObjs.Sort((obj, obj1) => obj.track.CompareTo(obj1.track));
+        skyTracks = new Dictionary<int, List<SkyTrackNodeObj>>(skyTracks.OrderBy(pair => pair.Key));
     }
     
     private void UpdateVisibleLines()
@@ -269,8 +288,8 @@ public partial class EditArea : ColorRect
             var t = beatTimes[i];
             if (t > renderEnd) break; // 超出屏幕上方，停止遍历
 
-            var lineN = GetLineFromPool(_poolN, poolIndex, notesContent);
-            var lineE = GetLineFromPool(_poolE, poolIndex, eventsContent);
+            var lineN = GetLineFromPool(poolN, poolIndex, notesContent);
+            var lineE = GetLineFromPool(poolE, poolIndex, eventsContent);
             
             var yPosLocal = judgeLine.Position.Y - (t + offsetTime) * speed; 
             
@@ -291,8 +310,8 @@ public partial class EditArea : ColorRect
             poolIndex++;
         }
 
-        HideUnusedLines(_poolN, poolIndex);
-        HideUnusedLines(_poolE, poolIndex);
+        HideUnusedLines(poolN, poolIndex);
+        HideUnusedLines(poolE, poolIndex);
     }
 
     private BeatLine GetLineFromPool(List<BeatLine> pool, int index, Control parent)

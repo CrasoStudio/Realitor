@@ -58,8 +58,6 @@ public partial class ArcLine2D : Line2D
 
             if (_smoothFactor > 0.001f)
             {
-                // 核心逻辑：控制柄只在 Y 轴（时间轴）上延伸
-                // 这样能造出音游特有的“先纵走，再横移”的 S 曲线
                 if (i < _keyPoints.Count - 1)
                 {
                     var distNextY = _keyPoints[i + 1].Y - currentPos.Y;

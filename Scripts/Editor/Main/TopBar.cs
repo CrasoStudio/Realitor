@@ -77,8 +77,11 @@ public partial class TopBar : ColorRect
 			EditorController.instance.noteEditSeg = (int)value;
 			EditorController.instance.editArea.ReloadEditArea();
 		};
-		
-		selectButtonGroup.Pressed += CheckSelectType;
+        
+        foreach (var button in selectButtonGroup.GetButtons())
+        {
+            button.Pressed += () => CheckSelectType(button);
+        }
 		selectButtonGroup.GetButtons()[0].ButtonPressed = true;
 
 		loadChartButton.Pressed += EditorController.instance.LoadChart;
@@ -100,9 +103,11 @@ public partial class TopBar : ColorRect
 		musicTimeSlider.Editable = !EditorController.instance.isPlaying;
 		playButton.Disabled = EditorController.instance.isPlaying;
 		pauseButton.Disabled = !EditorController.instance.isPlaying;
-		
-		if (EditorController.instance.isLoaded) musicTimeLabel.Text = SecondsToMMSS((int)EditorController.instance.songTime) 
-																	  + "/" + SecondsToMMSS((int)EditorController.instance.musicPlayer.GetStream().GetLength());
+
+        musicTimeLabel.Text = SecondsToMMSS((int)EditorController.instance.songTime)
+                              + "/" + SecondsToMMSS((int)EditorController.instance.musicPlayer.GetStream().GetLength());
+
+        EditorController.instance.editArea.placeable = selectButtonGroup.GetPressedButton() != null;
 	}
 
     public void SyncEditText()

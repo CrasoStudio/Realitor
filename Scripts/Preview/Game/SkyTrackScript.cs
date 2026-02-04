@@ -60,12 +60,12 @@ public partial class SkyTrackScript : Node3D
             var point = points[index];
             if (index != points.Count - 1)
             {
-                line.Points.Add(new Vector3(2 * point.x, 1 + point.y, 
+                line.Points.Add(new Vector3(2 * point.x, point.y, 
                     line.Points[^1].Z - (points[index + 1].time - point.time) * point.speed * NoteSettings.noteSpeed));
             }
             else
             {
-                line.Points.Add(new Vector3(2 * point.x, 1 + point.y, 
+                line.Points.Add(new Vector3(2 * point.x, point.y, 
                     line.Points[^1].Z - ((float)NoteSettings.controller.musicPlayer.Stream.GetLength() - point.time) * point.speed * NoteSettings.noteSpeed));
             }
         }
@@ -75,6 +75,7 @@ public partial class SkyTrackScript : Node3D
 
     public override void _Process(double delta)
     {
+        if(!NoteSettings.controller.isGameStart) return;
         if(NoteSettings.controller.isPause) return;
         
         var noteSpeed = NoteSettings.noteSpeed;
@@ -133,7 +134,6 @@ public partial class SkyTrackScript : Node3D
                         t.speed = 1;
                         t.isReady = true;
                     }
-
                     break;
                 case 1:
                     skyNote = NoteSettings.controller.skyFlickObj.Instantiate<Node3D>();
@@ -144,7 +144,16 @@ public partial class SkyTrackScript : Node3D
                         f.speed = 1;
                         f.isReady = true;
                     }
-
+                    break;
+                case 2:
+                    skyNote = NoteSettings.controller.skyCatchObj.Instantiate<Node3D>();
+                    if (skyNote is SkyCatchNote c)
+                    {
+                        c.hitTime = notes[0].time;
+                        c.speedEvents = noteSpeedEvents;
+                        c.speed = 1;
+                        c.isReady = true;
+                    }
                     break;
                 default:
                     skyNote = new Node3D();

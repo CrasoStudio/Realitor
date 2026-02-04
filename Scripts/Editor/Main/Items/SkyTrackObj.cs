@@ -25,7 +25,16 @@ public partial class SkyTrackObj : Control
     public override void _Process(double delta)
     {
         nodes = EditorController.instance.editArea.skyTracks[track];
-
+        if(nodes.Count < 1)
+        {
+            Hide();
+            return;
+        }
+        else
+        {
+            Show();
+        }
+            
         var width = nodes[0].Size.X / 2;
         var height = nodes[0].Size.Y / 2;
         

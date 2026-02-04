@@ -294,61 +294,55 @@ public partial class GameController : Node3D
             }
         }
 
-        if (chartContent.groundTracks.Count > 1)
+        if (chartContent.groundTracks.Count > 1) chartContent.groundTracks.Sort((t0, t1) => t0.track.CompareTo(t1.track));
+        for (var index = 0; index < chartContent.groundTracks.Count; index++)
         {
-            chartContent.groundTracks.Sort((t0, t1) => t0.track.CompareTo(t1.track));
-            for (var index = 0; index < chartContent.groundTracks.Count; index++)
-            {
-                var track = chartContent.groundTracks[index];
-                track.notes.Sort((note, note1) => note.time.CompareTo(note1.time));
-                track.trackTransparencyEvents.Sort((event0, event1) => event0.startTime.CompareTo(event1.startTime));
-                track.trackMoveEvents.Sort((event0, event1) => event0.startTime.CompareTo(event1.startTime));
-                track.trackRotateEvents.Sort((event0, event1) => event0.startTime.CompareTo(event1.startTime));
+            var track = chartContent.groundTracks[index];
+            track.notes.Sort((note, note1) => note.time.CompareTo(note1.time));
+            track.trackTransparencyEvents.Sort((event0, event1) => event0.startTime.CompareTo(event1.startTime));
+            track.trackMoveEvents.Sort((event0, event1) => event0.startTime.CompareTo(event1.startTime));
+            track.trackRotateEvents.Sort((event0, event1) => event0.startTime.CompareTo(event1.startTime));
                 
-                if (track.track > 3)
-                {
-                    var trackObj = groundTrackObj.Instantiate<GroundTrackScript>();
-                    trackObj.notes = track.notes;
-                    trackObj.track = track.track;
-                    trackObj.trackMoveEvents = track.trackMoveEvents;
-                    trackObj.trackRotateEvents = track.trackRotateEvents;
-                    trackObj.trackTransparencyEvents = track.trackTransparencyEvents;
-                    trackObj.isReady = true;
-                    trackObj.isFake = true;
-                    groundTracksParent.AddChild(trackObj);
-                }
-                else
-                {
-                    var trackObj = (GroundTrackScript)mainGroundTracks[track.track];
-                    trackObj.notes = track.notes;
-                    trackObj.track = track.track;
-                    trackObj.trackMoveEvents = track.trackMoveEvents;
-                    trackObj.trackRotateEvents = track.trackRotateEvents;
-                    trackObj.trackTransparencyEvents = track.trackTransparencyEvents;
-                    trackObj.isReady = true;
-                    trackObj.isFake = false;
-                    noteNum += track.notes.Count;
-                }
+            if (track.track > 3)
+            {
+                var trackObj = groundTrackObj.Instantiate<GroundTrackScript>();
+                trackObj.notes = track.notes;
+                trackObj.track = track.track;
+                trackObj.trackMoveEvents = track.trackMoveEvents;
+                trackObj.trackRotateEvents = track.trackRotateEvents;
+                trackObj.trackTransparencyEvents = track.trackTransparencyEvents;
+                trackObj.isReady = true;
+                trackObj.isFake = true;
+                groundTracksParent.AddChild(trackObj);
+            }
+            else
+            {
+                var trackObj = (GroundTrackScript)mainGroundTracks[track.track];
+                trackObj.notes = track.notes;
+                trackObj.track = track.track;
+                trackObj.trackMoveEvents = track.trackMoveEvents;
+                trackObj.trackRotateEvents = track.trackRotateEvents;
+                trackObj.trackTransparencyEvents = track.trackTransparencyEvents;
+                trackObj.isReady = true;
+                trackObj.isFake = false;
+                noteNum += track.notes.Count;
             }
         }
         
-        if (chartContent.skyTracks.Count > 1)
+        if (chartContent.skyTracks.Count > 1) chartContent.skyTracks.Sort((t0, t1) => t0.track.CompareTo(t1.track));
+        for (var index = 0; index < chartContent.skyTracks.Count; index++)
         {
-            chartContent.skyTracks.Sort((t0, t1) => t0.track.CompareTo(t1.track));
-            for (var index = 0; index < chartContent.skyTracks.Count; index++)
-            {
-                var track = chartContent.skyTracks[index];
-                track.notes.Sort((note, note1) => note.time.CompareTo(note1.time));
-                noteNum += track.notes.Count;
+            var track = chartContent.skyTracks[index];
+            track.notes.Sort((note, note1) => note.time.CompareTo(note1.time));
+            noteNum += track.notes.Count;
 
-                var trackObj = new SkyTrackScript();
-                trackObj.notes = track.notes;
-                trackObj.points = track.points;
-                trackObj.track = track.track;
-                trackObj.Position = Vector3.Zero;
-                trackObj.isReady = true;
-                skyTracksParent.AddChild(trackObj);
-            }
+            var trackObj = new SkyTrackScript();
+            trackObj.notes = track.notes;
+            trackObj.points = track.points;
+            trackObj.track = track.track;
+            trackObj.Position = Vector3.Zero;
+            trackObj.isReady = true;
+            skyTracksParent.AddChild(trackObj);
         }
 
         if (cameraBrightnessEvents.Count > 1) cameraBrightnessEvents.Sort((event0, event1) => event0.startTime.CompareTo(event1.startTime));

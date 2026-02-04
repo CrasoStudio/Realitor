@@ -49,6 +49,8 @@ public partial class EditorController : Control
             musicPlayer.Stop();
             isPlaying = false;
         };
+
+        topBar.loadChartButton.Disabled = true;
     }
 
     public override void _Process(double delta)
@@ -82,6 +84,7 @@ public partial class EditorController : Control
             topBar.loadMusicButton.Disabled = true;
             editArea.ReloadEditArea();
             fileDialog.QueueFree();
+            topBar.loadChartButton.Disabled = false;
             isLoaded = true;
         }
     }
@@ -120,6 +123,7 @@ public partial class EditorController : Control
                     noteObj.time = GetBeatFromTime(noteData.time, bpmEvents);
                     noteObj.duration = GetBeatFromTime(noteData.time + noteData.duration, bpmEvents) - noteObj.time;
                     noteObj.track = groundTrack.track;
+                    noteObj.speed = noteData.speed;
                 
                     // 初始化类型
                     noteObj.Init((Types)noteData.type);
@@ -146,7 +150,9 @@ public partial class EditorController : Control
                     var node = editArea.skyTrackNodeObj.Instantiate<SkyTrackNodeObj>();
                     node.time = GetBeatFromTime(point.time, bpmEvents);
                     node.x = point.x;
+                    node.y = point.y;
                     node.track = trackID;
+                    node.speed = point.speed;
                     
                     editArea.skyTracks[trackID].Add(node);
                     trackObj.AddChild(node);
@@ -159,7 +165,6 @@ public partial class EditorController : Control
                     noteObj.time = GetBeatFromTime(skyNoteData.time, bpmEvents);
                     noteObj.track = trackID;
                 
-                    // 根据 JSON 定义还原类型 (JSON 中 SkyTap=0, 但 Types 枚举中 SkyTap=3)
                     noteObj.Init((Types)(skyNoteData.type + 3)); 
                 
                     editArea.notes.Add(noteObj);
@@ -168,13 +173,9 @@ public partial class EditorController : Control
                 
                 editArea.notesContent.AddChild(trackObj);
             }
-
-            // 5. 刷新 UI 和显示
-            topBar.musicTimeSlider.MaxValue = music?.GetLength() ?? 100;
             topBar.SyncEditText();
             editArea.ReloadEditArea();
-        
-            isLoaded = true;
+
             fileDialog.QueueFree();
         }
     }
@@ -232,7 +233,8 @@ public partial class EditorController : Control
                     {
                         time = GetTimeFromBeat(note.time, bpmEvents),
                         duration = GetTimeFromBeat(note.duration, bpmEvents),
-                        type = (int)note.thisNoteType
+                        type = (int)note.thisNoteType,
+                        speed = note.speed
                     };
                     groundTrack.notes.Add(notec);
                 }
@@ -249,7 +251,9 @@ public partial class EditorController : Control
                 skyTrackC.points.Add(new TrackPoint
                 {
                     time = GetTimeFromBeat(node.time, bpmEvents),
-                    x = node.x
+                    x = node.x,
+                    y = node.y,
+                    speed = node.speed
                 });
             }
             foreach (var note in editArea.notes)
@@ -260,7 +264,7 @@ public partial class EditorController : Control
                     var noteC = new SkyNote
                     {
                         time = GetTimeFromBeat(note.time, bpmEvents),
-                        type = (int)note.thisNoteType - 4
+                        type = (int)note.thisNoteType - 3
                     };
                     skyTrackC.notes.Add(noteC);
                 }

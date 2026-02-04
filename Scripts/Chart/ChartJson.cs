@@ -29,7 +29,7 @@ public class Note
     public float time;
     public float duration;
     public int type;// tap=0,hold=1
-    public float speed = 1;//x
+    public float speed = 1;
     public int speedGroupID;//x
 }
 
@@ -58,8 +58,8 @@ public class SkyTrack
 public class TrackPoint
 {
     public float time;
-    public float x, y;//y-x
-    public int speed = 1;//x
+    public float x, y;
+    public float speed = 1;
 }
 
 public class SpeedGroup
